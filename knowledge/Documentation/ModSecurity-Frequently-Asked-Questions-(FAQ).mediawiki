@@ -1,0 +1,195 @@
+= ModSecurity Frequently Asked Questions (FAQ) (Last Full Update: August 28, 2014, Last Partial Update: Oct. 10, 2024) =
+
+'''OWASP ModSecurity took over the ModSecurity project in January 2024. The information in this wiki document will have to be revised, since some parts may be outdated.'''
+
+== Who Leads the ModSecurity Project? ==
+
+ModSecurity is supported by OWASP and includes the following team members:
+*@airween
+*@marcstern
+
+= Background and Support =
+
+== What exactly is ModSecurity? ==
+
+ModSecurity™is an open source, free web application firewall (WAF). With over 70% of all attacks now carried out over the web application level, organizations need all the help they can get in making their systems secure. WAFs are deployed to establish an external security layer that increases security, detects and prevents attacks before they reach web applications. It provides protection from a range of attacks against web applications and allows for HTTP traffic monitoring and real-time analysis with little or no changes to existing infrastructure.
+
+== Which version of ModSecurity should I be using? v2.9.x or v3.0.x? ==
+
+ModSecurity v2.9.x is intended for use with Apache HTTP Server and Windows IIS. ModSecurity v3.0.x is for use with nginx.
+
+Both code branches (v2/master and v3/master respectively) are actively maintained and provide similar functionality.
+
+== Where do I get more help on ModSecurity? ==
+
+=== Open Source/Free Help ===
+*https://github.com/SpiderLabs/ModSecurity/issues
+*https://github.com/SpiderLabs/ModSecurity/security/policy
+=== Commercial Help ===
+*Commercial Support through Trustwave's Technical Assistance Center (TAC) - https://www3.trustwave.com/modsecurity-rules-support.php
+*Professional Services offer by Trustwave SpiderLabs Research Team
+*ModSecurity Training
+
+== Is there anything that I should do prior to creating a new issue? ==
+
+Yes. There is a good chance that the issue you are facing has already been discussed and, in many cases, either a fix has been produced or a workaround or mitigation has been suggested. You can review open issues or use a search to look for comparable issues. If you cannot find an answer to your question after doing some research, feel free to create an new issue. Please note the supplied issue templates and supply as much pertinent information as possible.
+
+== Will I always get an immediate response to my issue? ==
+
+The github issues are "best effort". But you may get assistance from other members of the ModSecurity community other than the ModSecurity team.
+
+== When should I use the security email address? ==
+
+That email address is intended to provide a communication channel for issues that, due to security sensitivity, are unsuited to a public forum like our github 'issues' page.
+
+== What about sourceforge mailing lists? ==
+
+The ModSecurity project continues to use mod-security-packagers@lists.sourceforge.net to notify package managers of new releases. Other sourceforge mailing lists were formerly used but use of these by the ModSecurity team was discontinued years ago.
+
+== If I don't get an immediate response, should I send an email to the OWASP Technical Support email address? ==
+
+No. The OWASP Technical Support email address is for general concerns with OWASP only.
+
+
+Training
+Trustwave's SpiderLabs offers a variety of web application security training options include open source ModSecurity rule writing classes. Please use this contact form for more information. Ask about:
+
+ModSecurity: Deployment and Management
+ModSecurity: Rules Writing Workshop
+ModSecurity: Virtual Patching Workshop
+
+== Where can I find books about Web Application Firewalls and ModSecurity? ==
+
+=== ModSecurity Handbook ===
+ModSecurity Handbook is "The definitive guide to the popular open source web application firewall", written by Ivan Ristic (original author of ModSecurity). The book is available from Feisty Duck in hard copy or with immediate access to the digital version which is continually updated.
+
+=== Web Application Defender's Cookbook: Battling Hackers and Defending Users ===
+The Web Application Defender's Cookbook: Battling Hackers and Protecting Users is a book written by the former ModSecurity Project Lead Ryan Barnett. The book outlines critical defensive techniques to protect web applications and includes example ModSecurity rules/scripts.
+
+=== ModSecurity 2.5 ===
+ModSecurity 2.5 is "A complete guide to using ModSecurity", written by Magnus Mischel. The book is available from Packt Publishing in both hard copy and digital forms.
+
+=== Apache Security ===
+Apache Security is a comprehensive Apache Security resource, written by Ivan Ristic for O'Reilly. Two chapters (Apache Installation and Configuration and PHP) are available as free download, as are the Apache security tools created for the book.
+
+=== Preventing Web Attacks with Apache ===
+Preventing Web Attacks with Apache. Building on his groundbreaking SANS presentations on Apache security, Ryan C. Barnett reveals why your Web servers represent such a compelling target, how significant exploits are performed, and how they can be defended against.
+
+= Getting Started =
+
+== What type(s) of security models does ModSecurity support? ==
+
+There is a common misconception that ModSecurity can only be used for negative policy enforcement. This is not the case. ModSecurity does not have any default security model "out-of-the-box." It is up to the user to implement appropriate rules to achieve the desired security model. That being said, these are the security models which are most often employed:
+
+Negative Security Model - looks for known bad, malicious requests. This method is effective at blocking a large number of automated attacks, however it is not the best approach for identifying new attack vectors. Using too many negative rules may also negatively impact performance.
+
+Positive Security Model - When positive security model is deployed, only requests that are known to be valid are accepted, with everything else rejected. This approach works best with applications that are heavily used but rarely updated.
+
+Virtual Patching - Its rule language makes ModSecurity an ideal external patching tool. External patching is all about reducing the window of opportunity. Time needed to patch application vulnerabilities often runs to weeks in many organizations. With ModSecurity, applications can be patched from the outside, without touching the application source code (and even without any access to it), making your systems secure until a proper patch is produced.
+
+Extrusion Detection Model - ModSecurity can also monitor outbound data and identify and block information disclosure issues such as leaking detailed error messages or Social Security Numbers or Credit Card Numbers.
+
+== I hear that ModSecurity can be run in embedded-mode, what does that mean exactly? ==
+
+The term "embedded" simply refers to the fact that ModSecurity is running inside the webserver process. Most WAFs function as totally separate hosts and sit in front of the web servers. Running in embedded-mode has some tradeoffs that should be considered:
+
+Advantages
+
+* Easy to add to an existing web server.
+* Not a point of failure with respect to traffic.
+
+Disadvantages
+
+* ModSecurity can only protect the local web server.
+* ModSecurity will consume local resources such as CPU and RAM.
+* Management of log files and configurations can become difficult if you have multiple installations.
+
+== I hear that ModSecurity can be run in reverse-proxy mode. How does that differ from embedded-mode? ==
+
+The only difference with this deployment vs. an embedded one is that the web server itself is configured to function as a reverse proxy.
+
+Advantages
+
+* Single point of access functions as a choke point so you consolidate applying security settings and makes management easier.
+* Network topology is hidden from the outside world so it will be more difficult for attackers to enumerate your web platforms.
+* Increased performance if SSL accelerators/caching used.
+* You can implement vulnerability filters to protect and vulnerable web server or application on the back-end (IIS, Netscape, ASP, PHP, etc.). See related section on Virtual Patching.
+
+Disadvantages
+
+* A potential traffic bottleneck if the reverse proxy can not handle the network load.
+* A potential point of failure: if the reverse proxy goes down it may cause a denial of service to the web applications that are behind it.
+* Requires changes to the network.
+
+= Configuring ModSecurity =
+
+== Should I initially set the SecRuleEngine to On? ==
+
+No. Every Ruleset can have false positives in new environments and any new installation should initially use the log only Ruleset version or if no such version is available, set ModSecurity to Detection only using the SecRuleEngine DetectionOnly command. After running ModSecurity in a detection only mode for a while review the evens generated and decide if any modification to the rule set should be made before moving to protection mode.
+
+== How do I get ModSecurity to inspect request and response bodies? ==
+
+You need to set the the following two directives:
+
+```
+SecRequestBodyAccess On
+
+SecResponseBodyAccess On
+```
+
+== How can I verify exactly how ModSecurity is processing rules and requests? ==
+
+You need to enable the debug log with SecDebugLog and increase the log level with SecDebugLogLevel. It you set the debug log level to 9, it will tell you exactly what tasks it is completing along with what data it is acting upon. Do be aware that while the increased debug log level does help from a troubleshooting perspective, it does negatively impact performance.
+
+= ModSecurity Rules Language =
+
+== What are the OWASP ModSecurity Core Rules (CRS) and should I use them? ==
+
+Using ModSecurity requires rules. Installations commonly use one or more of the following:
+*A generic rule set that provides generic protection from unknown vulnerabilities
+*A rule set addressing known CVEs in specific applications
+*Custom rules
+One of the frequently-used generic rule sets is available from the OWASP ModSecrity Core Rule Set (CRS) Project, which is managed by a separate group.
+
+== How do I whitelist an IP address so it can pass through ModSecurity? ==
+
+The first issue to realize is that in ModSecurity 2.0, the allow action is only applied to the current phase. This means that if a rule matches in a subsequent phase it may still take a disruptive action. The recommended rule configuration to allow a remote IP address to bypass ModSecurity rules is to do the following (where 192.168.1.100 should be substituted with the desired IP address):
+
+SecRule REMOTE_ADDR "@ipMatch 192.168.110" phase:1,nolog,allow,ctl:ruleEngine=Off
+
+If you want to allow uninterrupted access to the remote IP address, however you still want to log rule alerts, then you can use this rule -
+
+SecRule REMOTE_ADDR "@ipMatch 192.168.110" phase:1,nolog,allow,ctl:ruleEngine=DetectionOnly
+
+If you want to disable both the rule and audit engines, then you can optionally add another ctl action:
+
+SecRule REMOTE_ADDR "@ipMatch 192.168.110" phase:1,nolog,allow,ctl:ruleEngine=Off,ctl:auditEngine=Off
+
+== How do I handle False Positives and creating Custom Rules? ==
+
+It is inevitable; you will run into some False Positive hits when using web application firewalls. This is not something that is unique to ModSecurity. All web application firewalls will generate false positives from time to time. The following Blog post information will help to guide you through the process of identifying, fixing, implementing and testing new custom rules to address false positives.
+http://blog.spiderlabs.com/2011/08/modsecurity-advanced-topic-of-the-week-exception-handling.html
+
+== Will using a large amount of negative filtering rules impact performance? ==
+
+Yes. Each and every rule that you implement will consume resources (RAM, CPU, etc...). The two most important factors to consider with creating ModSecurity rules are the total number of rules and the Regular Expression optimizations. A single rule with a complex regular expression is significantly faster than multiple rules with simple regular expressions. Unfortunately, it is quite easy to create inefficient RegEx patterns. Optimizing RegExs by utilizing Grouping Only/Non-Capturing Parentheses can cut the validation time by up to 50%. The Core Ruleset is optimized for performance.
+
+== What is a Virtual Patch and why should I care? ==
+
+Fixing identified vulnerabilities in web applications always requires time. Organizations often do not have access to a commercial application's source code and are at the vendor's mercy while waiting for a patch. Even if they have access to the code, implementing a patch in development takes time. This leaves a window of opportunity for the attacker to exploit. External patching (also called "just-in-time patching" and "virtual patching") is one of the biggest advantages of web application firewalls as they can fix this problem externally. A fix for a specific vulnerability is usually very easy to design and in most cases it can be done in less than 15 minutes.
+
+https://www.owasp.org/index.php/Virtual_Patching_Cheat_Sheet
+
+= Managing Alerts =
+
+== How do I manage ModSecurity logs if I have multiple installations? ==
+
+If you have more then 1 ModSecurity installation, you have undoubtedly run into issues with consolidating, analyzing and responding to alert messages. Unfortunately, the original "Serial" format of the audit log was multi-line with all records held within one file. This made remote logging difficult. What was really needed was to have a mechanism to send logs onto a centralized logging host made specifically for processing ModSecurity Alert data. This is the purpose of the mlogc program. It comes with the ModSecurity source code and can be used to send individual audit log entries to a remote host in near real-time.
+
+== Is there an open source Console to send my audit logs to? ==
+
+Christian Bockermann has developed an outstanding free tool called AuditConsole that allows you to centralize and analyze remote ModSecurity audit log data.
+
+== Can I send ModSecurity alert log data through Syslog? ==
+
+Yes. If you already have a central Syslog infrastructure setup and/or if you are using some sort of SIEM application (such as Intellitactics, etc...), then you might want to include the short version ModSecurity alert messages that appear in the Apache error_log file. You can easily reconfigure Apache to send its error logs through Syslog onto a remote, central logging server. However, the data being forwarded is a very small subset of the entire transaction. It is only a warning message and not enough information to conduct proper incident response to determine if there was a false positive or if it was a legitimate attack. In order to determine this information, you need access to the ModSecurity Audit log files.

@@ -1,0 +1,88 @@
+# ─────────────────────────────────────────────────────────────
+#  ModSec Agent — Configuration
+# ─────────────────────────────────────────────────────────────
+
+# ── Workspace ────────────────────────────────────────────────
+workspace:
+  name: "knowledge_v1"
+  database_dir: "./database"
+  knowledge_dir: "./knowledge"
+  batch_size: 50
+
+# ── Embedding Model ──────────────────────────────────────────
+embedding:
+  model: "qwen3-embedding:8b"
+  dimensions: 4096
+  max_token_size: 32768
+
+# ── LLM Provider ─────────────────────────────────────────────
+# Model name determines provider:
+#   "nvidia:<model>"     → NVIDIA API
+#   "<model>:cloud"      → Ollama Cloud
+#   "<model>"            → Ollama Local
+llm:
+  default_model: "nvidia:moonshotai/kimi-k2-thinking"
+
+  # Models shown in the UI dropdown (editable, supports custom input)
+  available_models:
+    - "nvidia:moonshotai/kimi-k2-thinking"
+    - "nvidia:moonshotai/kimi-k2.5"
+    - "kimi-k2.5:cloud"
+    - "gpt-oss:120b-cloud"
+    - "qwen3.5:9b"
+    - "qwen3:32b"
+    - "devstral:24b"
+    - "deepseek-r1:32b"
+
+# ── Ollama Settings ──────────────────────────────────────────
+ollama:
+  host: "http://127.0.0.1:11434"
+
+  keyword_extraction:
+    temperature: 0.6
+    top_p: 0.95
+    num_predict: 8192
+    num_ctx: 8192
+
+  llm:
+    temperature: 0.6
+    top_p: 0.95
+    num_predict: 16384
+    num_ctx: 131072
+
+# ── NVIDIA API Settings ──────────────────────────────────────
+# API key: set via NVIDIA_API_KEY environment variable
+# or place it in .env file (never commit to git)
+nvidia:
+  base_url: "https://integrate.api.nvidia.com/v1"
+  temperature: 0.1
+  top_p: 0.95
+  max_tokens_keyword: 8192
+  max_tokens_llm: 16384
+
+# ── RAG Settings ─────────────────────────────────────────────
+rag:
+  chunk_token_size: 4000
+  llm_timeout: 900
+  max_async_workers: 3
+  entity_extract_max_gleaning: 1
+  top_k: 40
+  chunk_top_k: 20
+  default_mode: "mix"
+  response_type: "Multiple Paragraphs"
+
+  entity_types:
+    - "directive"
+    - "variable"
+    - "operator"
+    - "action"
+    - "transformation"
+    - "attack_type"
+    - "rule_id"
+    - "collection"
+
+# ── UI Settings ──────────────────────────────────────────────
+ui:
+  host: "127.0.0.1"
+  port: 7860
+  title: "ModSec Agent"

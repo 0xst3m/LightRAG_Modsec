@@ -1,0 +1,9 @@
+lightrag-hku
+networkx
+requests
+ollama
+openai
+gradio
+pyyaml
+python-dotenv
+pytest
