@@ -219,7 +219,3 @@ To move to another machine:
 - [Ollama](https://ollama.com/) — Local LLM inference
 - [Gradio](https://gradio.app/) — Web UI
 - [NVIDIA NIM](https://build.nvidia.com/) — Cloud LLM API (optional)
-
-## License
-
-MIT
