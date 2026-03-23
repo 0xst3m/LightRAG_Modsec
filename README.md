@@ -1,4 +1,4 @@
-# ModSec Agent
+# LightRAG_Modsec
 
 AI-powered ModSecurity rule generation using a **knowledge graph + vector search** RAG pipeline.
 
