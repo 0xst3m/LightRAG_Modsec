@@ -1,5 +1,5 @@
-import re
 import logging
+import re
 from pathlib import Path
 from typing import List
 
@@ -7,6 +7,7 @@ logger = logging.getLogger(__name__)
 
 
 # ── Filename category extraction ─────────────────────────────
+
 
 def _extract_conf_category(filename: str) -> str:
     """
@@ -19,9 +20,9 @@ def _extract_conf_category(filename: str) -> str:
         REQUEST-920-PROTOCOL-ENFORCEMENT.conf    → "PROTOCOL ENFORCEMENT"
     """
     stem = Path(filename).stem  # e.g. REQUEST-932-APPLICATION-ATTACK-RCE
-    match = re.match(r'^(?:REQUEST|RESPONSE)-\d+-(.+)$', stem)
+    match = re.match(r"^(?:REQUEST|RESPONSE)-\d+-(.+)$", stem)
     if match:
-        return match.group(1).replace('-', ' ')
+        return match.group(1).replace("-", " ")
     return stem
 
 
@@ -40,28 +41,91 @@ def _extract_mediawiki_topic(filename: str) -> str:
     stem = Path(filename).stem  # e.g. Reference-Manual-Variables
 
     # Reference-Manual-<Topic> pattern
-    match = re.match(r'^Reference-Manual-(.+)$', stem)
+    match = re.match(r"^Reference-Manual-(.+)$", stem)
     if match:
-        return match.group(1).replace('-', ' ')
+        return match.group(1).replace("-", " ")
 
     # Standalone Reference-Manual (the main file)
-    if stem == 'Reference-Manual':
+    if stem == "Reference-Manual":
         return "ModSecurity Reference Manual"
 
     # ModSecurity-Frequently-Asked-Questions-(FAQ) pattern
-    match = re.match(r'^ModSecurity-(.+)$', stem)
+    match = re.match(r"^ModSecurity-(.+)$", stem)
     if match:
-        topic = match.group(1).replace('-', ' ')
+        topic = match.group(1).replace("-", " ")
         # Restore parenthesized abbreviations: "( FAQ)" → "(FAQ)"
-        topic = re.sub(r'\(\s*', '(', topic)
-        topic = re.sub(r'\s*\)', ')', topic)
+        topic = re.sub(r"\(\s*", "(", topic)
+        topic = re.sub(r"\s*\)", ")", topic)
         return topic
 
     # Fallback: use stem with dashes replaced
-    return stem.replace('-', ' ')
+    return stem.replace("-", " ")
 
 
 # ── CRS .conf parsing ────────────────────────────────────────
+
+
+def _extract_actions_string(chunk: str) -> str:
+    """
+    Returns the content of the last double-quoted block in the chunk.
+    For a SecRule that is the actions block; for a SecAction it is the
+    only quoted block.  Handles backslash-escaped quotes inside strings.
+    """
+    blocks = []
+    i = 0
+    n = len(chunk)
+    while i < n:
+        if chunk[i] == '"':
+            i += 1
+            start = i
+            while i < n:
+                if chunk[i] == "\\":
+                    i += 2  # skip escaped character
+                    continue
+                if chunk[i] == '"':
+                    blocks.append(chunk[start:i])
+                    break
+                i += 1
+        i += 1
+    return blocks[-1] if blocks else ""
+
+
+def _has_chain_action(chunk: str) -> bool:
+    """
+    Returns True only when the chunk contains a genuine 'chain' action token
+    inside its actions block.
+
+    Mirrors msc_pyparser's token-level approach: extract the actions string
+    (last double-quoted block), split by commas while skipping single-quoted
+    sub-values, then check each token for an exact case-insensitive match
+    against 'chain'.
+
+    This avoids false positives from:
+      - 'chain' inside regex patterns  e.g. @rx "blockchain"
+      - 'chain' inside msg/tag/logdata e.g. msg:'supply chain risk'
+    """
+    actions_str = _extract_actions_string(chunk)
+    if not actions_str:
+        return False
+
+    # Tokenise by commas, skipping content inside single quotes
+    tokens = []
+    current: list = []
+    in_sq = False
+    for ch in actions_str:
+        if ch == "'":
+            in_sq = not in_sq
+            current.append(ch)
+        elif ch == "," and not in_sq:
+            tokens.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+    if current:
+        tokens.append("".join(current).strip())
+
+    return any(tok.lower() == "chain" for tok in tokens)
+
 
 def parse_crs_file(filepath: str) -> List[str]:
     """
@@ -73,18 +137,18 @@ def parse_crs_file(filepath: str) -> List[str]:
     so the RAG system can route queries to the right rules.
     """
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             content = f.read()
     except UnicodeDecodeError:
-        with open(filepath, 'r', encoding='latin-1') as f:
+        with open(filepath, "r", encoding="latin-1") as f:
             content = f.read()
 
     # Resolve \ line continuations (both LF and CRLF)
-    content = re.sub(r'\\\r?\n\s*', ' ', content)
+    content = re.sub(r"\\\r?\n\s*", " ", content)
 
     # Split at SecRule / SecAction boundaries (including indented ones)
     raw_chunks = re.split(
-        r'(?=^[ \t]*SecRule\s|^[ \t]*SecAction\s)',
+        r"(?=^[ \t]*SecRule\s|^[ \t]*SecAction\s)",
         content,
         flags=re.MULTILINE,
     )
@@ -95,7 +159,7 @@ def parse_crs_file(filepath: str) -> List[str]:
         chunk = chunk.strip()
         if not chunk:
             continue
-        if chunk.startswith('SecRule') or chunk.startswith('SecAction'):
+        if chunk.startswith("SecRule") or chunk.startswith("SecAction"):
             valid_chunks.append(chunk)
 
     # Group chained rules together
@@ -109,9 +173,9 @@ def parse_crs_file(filepath: str) -> List[str]:
         current_chain.append(chunk)
 
         # Check if this rule has a 'chain' action.
-        # The chain keyword appears in the actions string like:
-        #   ...,chain,... or ...,chain" or "chain" or standalone chain
-        if re.search(r'(?:^|[,"])\s*chain\s*(?:[,"]|$)', chunk, flags=re.IGNORECASE):
+        # Uses token-level detection (not regex over the full chunk) to avoid
+        # false positives when 'chain' appears in operator patterns or msg strings.
+        if _has_chain_action(chunk):
             continue  # Part of a chain, wait for the terminal rule
 
         # Chain ends or rule is standalone — flush
@@ -131,6 +195,7 @@ def parse_crs_file(filepath: str) -> List[str]:
 
 # ── MediaWiki documentation parsing ──────────────────────────
 
+
 def _extract_section_name(heading: str) -> str:
     """
     Strips mediawiki heading markers and whitespace.
@@ -140,7 +205,7 @@ def _extract_section_name(heading: str) -> str:
     """
     # Strip outer whitespace first, then remove = markers
     heading = heading.strip()
-    return re.sub(r'^=+\s*|\s*=+$', '', heading).strip()
+    return re.sub(r"^=+\s*|\s*=+$", "", heading).strip()
 
 
 def parse_mediawiki_file(filepath: str) -> List[str]:
@@ -153,10 +218,10 @@ def parse_mediawiki_file(filepath: str) -> List[str]:
     LightRAG's internal sub-chunking.
     """
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(filepath, "r", encoding="utf-8") as f:
             content = f.read().strip()
     except UnicodeDecodeError:
-        with open(filepath, 'r', encoding='latin-1') as f:
+        with open(filepath, "r", encoding="latin-1") as f:
             content = f.read().strip()
 
     if not content:
@@ -169,7 +234,7 @@ def parse_mediawiki_file(filepath: str) -> List[str]:
     # Level 1 (= Title =) is typically the document title / broad category,
     # level 2 (== ... ==) is where individual concepts live (ARGS, ENV, deny, etc.)
     # We use lookahead so the heading stays with its content.
-    section_splits = re.split(r'(?=^==\s[^=])', content, flags=re.MULTILINE)
+    section_splits = re.split(r"(?=^==\s[^=])", content, flags=re.MULTILINE)
 
     # If no level-2 headings found, return the whole file as one chunk
     if len(section_splits) <= 1:
@@ -190,7 +255,7 @@ def parse_mediawiki_file(filepath: str) -> List[str]:
             continue
 
         # Extract the section name from the first line (the heading)
-        first_line = section.split('\n', 1)[0]
+        first_line = section.split("\n", 1)[0]
         section_name = _extract_section_name(first_line)
 
         if not section_name:
@@ -204,7 +269,7 @@ def parse_mediawiki_file(filepath: str) -> List[str]:
 
 # ── Unified ingestion ────────────────────────────────────────
 
-SUPPORTED_EXTENSIONS = {'.conf', '.mediawiki'}
+SUPPORTED_EXTENSIONS = {".conf", ".mediawiki"}
 
 
 def ingest_all_files(file_paths: List[str]) -> List[str]:
@@ -217,7 +282,7 @@ def ingest_all_files(file_paths: List[str]) -> List[str]:
         return []
 
     # Ensure crs-setup.conf is at the start if present
-    setup_file = next((f for f in file_paths if 'crs-setup.conf' in f), None)
+    setup_file = next((f for f in file_paths if "crs-setup.conf" in f), None)
     ordered_files = []
     if setup_file:
         ordered_files.append(setup_file)
@@ -229,10 +294,10 @@ def ingest_all_files(file_paths: List[str]) -> List[str]:
     for filepath in ordered_files:
         ext = Path(filepath).suffix.lower()
         try:
-            if ext == '.conf':
+            if ext == ".conf":
                 chunks = parse_crs_file(filepath)
                 logger.info(f"Parsed {filepath}: {len(chunks)} combined rules/actions")
-            elif ext == '.mediawiki':
+            elif ext == ".mediawiki":
                 chunks = parse_mediawiki_file(filepath)
                 logger.info(f"Parsed {filepath}: {len(chunks)} text chunk(s)")
             else:
